@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Race Pool Dashboard</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    body { background:#0b0f19; color:#e8ecf3; }
+    .card { background:#121a2b; border:1px solid rgba(255,255,255,.08); }
+    .muted { color: rgba(232,236,243,.7); }
+    .pill { border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; }
+    .flag { font-weight:600; }
+    .flag-dup { color:#ffcc00; }
+    .flag-miss { color:#ff6b6b; }
+    .table thead th { cursor:pointer; user-select:none; }
+    .linklike { color:#7cc4ff; text-decoration: none; }
+    .linklike:hover { text-decoration: underline; }
+    .sticky-topbar { position:sticky; top:0; z-index:5; background:#0b0f19; padding-top:.75rem; padding-bottom:.75rem; border-bottom:1px solid rgba(255,255,255,.08); }
+    .badge-soft { background:rgba(124,196,255,.14); border:1px solid rgba(124,196,255,.22); color:#cfeaff; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); padding:.1rem .35rem; border-radius:.35rem; }
+  </style>
+</head>
+
+<body>
+  <div class="container py-3">
+
+    <div class="sticky-topbar">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+          <h1 class="h3 mb-0">🏁 Race Pool Dashboard</h1>
+          <div class="muted small">Weekly picks • live standings • fun stats</div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span id="pill-season" class="pill">Season: 2026</span>
+          <span id="pill-lastupdate" class="pill">Last update: —</span>
+          <a class="pill linklike" href="#" data-bs-toggle="modal" data-bs-target="#rulesModal">Rules</a>
+        </div>
+      </div>
+
+      <ul class="nav nav-pills mt-3">
+        <li class="nav-item"><a class="nav-link active" href="#" data-view="standings">Standings</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-view="weekly">Weekly</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" data-view="teams">Teams</a></li>
+      </ul>
+    </div>
+
+    <!-- Standings -->
+    <section id="view-standings" class="mt-3">
+      <div class="row g-3">
+        <div class="col-lg-8">
+          <div class="card p-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+              <div>
+                <h2 class="h5 mb-0">Standings</h2>
+                <div class="muted small">Search, sort columns, click a team for details</div>
+              </div>
+              <input id="standings-search" class="form-control form-control-sm" style="max-width:280px;"
+                     placeholder="Search team…" />
+            </div>
+
+            <div class="table-responsive mt-3">
+              <table id="standings-table" class="table table-sm table-dark align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th data-sort="rank">#</th>
+                    <th data-sort="team_name">Team</th>
+                    <th data-sort="total_points">Total</th>
+                    <th data-sort="behind">Behind</th>
+                    <th data-sort="wins_picked">Wins Picked</th>
+                    <th data-sort="top5s_picked">Top-5s Picked</th>
+                    <th>Flags</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card p-3">
+            <h2 class="h5 mb-2">This Week</h2>
+            <div id="week-summary" class="muted small">Loading…</div>
+            <hr />
+            <div id="week-callouts"></div>
+          </div>
+
+          <div class="card p-3 mt-3">
+            <h2 class="h5 mb-2">Leaderboard Trend</h2>
+            <div class="muted small mb-2">Top 5 points over time</div>
+            <canvas id="chart-top5" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Weekly -->
+    <section id="view-weekly" class="mt-3 d-none">
+      <div class="card p-3">
+        <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+          <div>
+            <h2 class="h5 mb-0">Weekly Picks & Results</h2>
+            <div class="muted small">Choose a race week to see picks, points, and rule flags</div>
+          </div>
+
+          <div class="d-flex gap-2 align-items-center">
+            <select id="week-select" class="form-select form-select-sm" style="max-width:220px;"></select>
+            <span id="week-pill" class="badge badge-soft">—</span>
+          </div>
+        </div>
+
+        <div class="table-responsive mt-3">
+          <table id="weekly-table" class="table table-sm table-dark align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Team</th>
+                <th>Pick (Car #)</th>
+                <th>Points</th>
+                <th>Win</th>
+                <th>Top-5</th>
+                <th>Flags</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Teams -->
+    <section id="view-teams" class="mt-3 d-none">
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="card p-3">
+            <h2 class="h5 mb-2">Team Picker</h2>
+            <div class="muted small">Pick a team to view points trend + picks history</div>
+            <select id="team-select" class="form-select form-select-sm mt-2"></select>
+            <div id="team-meta" class="mt-3 muted small">—</div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card p-3">
+            <h2 class="h5 mb-2">Team Trend</h2>
+            <canvas id="chart-team" height="220"></canvas>
+          </div>
+
+          <div class="card p-3 mt-3">
+            <h2 class="h5 mb-2">Picks History</h2>
+            <div class="table-responsive">
+              <table class="table table-sm table-dark align-middle mb-0" id="team-picks-table">
+                <thead>
+                  <tr>
+                    <th>Race</th>
+                    <th>Half</th>
+                    <th>Pick</th>
+                    <th>Points</th>
+                    <th>Flags</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="modal fade" id="rulesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content" style="background:#121a2b;color:#e8ecf3;border:1px solid rgba(255,255,255,.12);">
+        <div class="modal-header">
+          <h5 class="modal-title">Race Pool Rules (Quick View)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="mb-0">
+            <li><b>Pick the CAR NUMBER (not the driver)</b>.</li>
+            <li><b>One-time use per half:</b> you can only use a car number once in the 1st half and once in the 2nd half. Duplicate in the same half = <b>0 points</b>.</li>
+            <li><b>No pick submitted</b> = <b>0 points</b>.</li>
+            <li>Points equal the <b>NASCAR points for that car at race end</b> (stage/segment points included), and NASCAR penalties apply.</li>
+            <li>No segment points are awarded in the <b>final race</b>.</li>
+            <li>Season tie-break: <b>most wins picked</b>, then <b>most top-5s picked</b>.</li>
+          </ul>
+          <hr />
+          <div class="muted small">
+            Admin note: this site will flag duplicates/missing picks automatically and can optionally auto-score duplicates as 0.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
